@@ -54,8 +54,19 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Object files
-*.o
-
 # Binary files
 *.bin
+*.img
+*.iso
+
+# Build directories
+build/
+
+# IDE files
+.vscode/
+*.swp
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
