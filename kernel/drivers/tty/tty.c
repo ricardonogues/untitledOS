@@ -1,6 +1,7 @@
 #include "../../include/drivers/vga/vga.h"
 #include "../../include/drivers/tty/tty.h"
 #include "../../include/types.h"
+#include "../../libc/string.h"
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
@@ -60,4 +61,9 @@ void terminal_write(const char *data, size_t size)
 {
     for (size_t i = 0; i < size; i++)
         terminal_putchar(data[i]);
+}
+
+void terminal_writestring(const char *data)
+{
+    terminal_write(data, strlen(data));
 }
