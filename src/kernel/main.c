@@ -2,7 +2,7 @@
 #include "include/drivers/tty/tty.h"
 #include "libc/string.h"
 #include "libc/stack_protector.h"
-#include "arch/x86/gdt.h"
+#include "include/arch/x86/gdt.h"
 // #include "tests/stack_test.h"
 
 void kernel_main(void) __attribute__((section(".text.kernel_main")));
