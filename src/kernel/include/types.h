@@ -5,4 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define NULL ((void *)0)
+
 #endif // TYPES_H

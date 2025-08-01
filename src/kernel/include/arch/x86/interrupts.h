@@ -24,7 +24,7 @@ struct stack_state
 
 void interrupt_handler(struct cpu_state *cpu, unsigned int interrupt, struct stack_state *stack);
 void interrupt_install(void);
-void interrupt_handler_register(uint8_t interrupt, void (*handler)(void));
+void interrupt_handler_register(uint8_t interrupt, void (*handler)(struct cpu_state *cpu, struct stack_state *stack));
 void interrupt_handler_unregister(uint8_t interrupt);
 
 #endif // INTERRUPTS_H

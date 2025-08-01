@@ -39,12 +39,7 @@ void pic_remap(uint8_t offset1, uint8_t offset2)
 
 void pic_send_eoi(uint8_t irq)
 {
-    if (irq >= PIC1_OFFSET && irq < PIC2_OFFSET)
-    {
-        outb(PIC1_COMMAND_PORT, PIC_ACKNOWLEDGE);
-    }
-    else if (irq >= PIC2_OFFSET && irq <= PIC2_END)
-    {
+    if (irq >= 8)
         outb(PIC2_COMMAND_PORT, PIC_ACKNOWLEDGE);
-    }
+    outb(PIC1_COMMAND_PORT, PIC_ACKNOWLEDGE);
 }

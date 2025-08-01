@@ -56,7 +56,7 @@ $(KERNEL_BIN): $(KERNEL_OBJECTS)
 	$(LD) -m elf_i386 -T $(LINKER_DIR)/kernel-bin.ld --oformat binary -o $@ $^
 
 # OS image
-$(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
+$(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) $(KERNEL_ELF)
 	@mkdir -p $(dir $@)
 	cat $^ > $@
 	dd if=/dev/zero bs=1K count=1440 >> $@
@@ -69,3 +69,11 @@ debug: $(OS_IMAGE)
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+show_sources:
+	@echo "Kernel C Sources:"
+	@for file in $(KERNEL_C_SOURCES); do echo $$file; done
+	@echo "Kernel ASM Sources:"
+	@for file in $(KERNEL_ASM_SOURCES); do echo $$file; done
+	@echo "Kernel Object Files:"
+	@for file in $(KERNEL_OBJECTS); do echo $$file; done

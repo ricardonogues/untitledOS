@@ -1,5 +1,5 @@
-#include "../../include/arch/x86/gdt.h"
-#include "../../include/types.h"
+#include "../../../include/arch/x86/gdt/gdt.h"
+#include "../../../include/types.h"
 
 #define GDT_ENTRIES 5
 
