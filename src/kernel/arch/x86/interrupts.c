@@ -2,9 +2,10 @@
 #include "../../include/arch/x86/idt/idt.h"
 #include "../../include/arch/x86/pic/pic.h"
 #include "../../include/drivers/tty/tty.h"
-#include "../../include/types.h"
+#include "../../include/drivers/vga/vga.h"
+#include <stdint.h>
 
-static void (*interrupt_handlers[256])(struct cpu_state *cpu, struct stack_state *stack) = {0};
+static void (*interrupt_handlers[256])(struct cpu_state *cpu) = {0};
 
 extern void interrupt_handler_0(void);
 extern void interrupt_handler_1(void);
@@ -31,6 +32,40 @@ extern void interrupt_handler_21(void);
 extern void interrupt_handler_32(void); // Timer
 extern void interrupt_handler_33(void); // Keyboard
 extern void interrupt_handler_0x80(void);
+
+static volatile int timer_ticks = 0;
+static volatile int interrupt_received = 0;
+
+void divide_by_zero_handler(struct cpu_state *cpu_state)
+{
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK));
+    terminal_writestring("Divide by zero exception caught!\n");
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+}
+
+void invalid_opcode_handler(struct cpu_state *cpu_state)
+{
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK));
+    terminal_writestring("Invalid opcode exception caught!\n");
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK));
+}
+
+void timer_interrupt_handler(struct cpu_state *cpu_state)
+{
+    timer_ticks++;
+    // if (timer_ticks % 100 == 0)
+    // { // Print every 100 ticks to avoid spam
+    //     terminal_writestring("Timer tick: ");
+    //     terminal_writenumber(timer_ticks / 100);
+    //     terminal_writestring("\n");
+    // }
+}
+
+void test_interrupt_handler(struct cpu_state *cpu)
+{
+    interrupt_received = 1;
+    terminal_writestring("Software interrupt handler called!\n");
+}
 
 void interrupt_install(void)
 {
@@ -77,16 +112,26 @@ void interrupt_install(void)
     // Set up software interrupt for testing
     idt_set_entry(0x80, (uint32_t)interrupt_handler_0x80, 0x08, 0x8E);
 
+    // Setup some interrupt handlers
+    interrupt_handler_register(0, divide_by_zero_handler);
+    interrupt_handler_register(6, invalid_opcode_handler);
+    interrupt_handler_register(32, timer_interrupt_handler); // IRQ0 = interrupt 32
+    interrupt_handler_register(0x80, test_interrupt_handler);
+
     // Enable interrupts
     asm volatile("sti");
 }
 
-void interrupt_handler(struct cpu_state *cpu, unsigned int interrupt, struct stack_state *stack)
+void interrupt_handler(struct cpu_state *cpu)
 {
+    uint32_t *stack_ptr = (uint32_t *)((uint8_t *)cpu + sizeof(struct cpu_state));
+    uint32_t interrupt = stack_ptr[0];  // The first value on the stack is the interrupt number
+    uint32_t error_code = stack_ptr[1]; // Error code is the next value on the stack
+
     if (interrupt < 256 && interrupt_handlers[interrupt])
     {
         // Call the registered handler for this interrupt
-        interrupt_handlers[interrupt](cpu, stack);
+        interrupt_handlers[interrupt](cpu);
     }
 
     // Send EOI for hardware interrupts
@@ -103,7 +148,7 @@ void interrupt_handler(struct cpu_state *cpu, unsigned int interrupt, struct sta
     }
 }
 
-void interrupt_handler_register(uint8_t interrupt, void (*handler)(struct cpu_state *cpu, struct stack_state *stack))
+void interrupt_handler_register(uint8_t interrupt, void (*handler)(struct cpu_state *cpu))
 {
     interrupt_handlers[interrupt] = handler;
 }

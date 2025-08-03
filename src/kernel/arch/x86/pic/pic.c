@@ -1,5 +1,5 @@
 #include "../../../include/arch/x86/pic/pic.h"
-#include "../../../include/types.h"
+#include <stdint.h>
 #include "../../../include/arch/x86/ports.h"
 
 void pic_remap(uint8_t offset1, uint8_t offset2)

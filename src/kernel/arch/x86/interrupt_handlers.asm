@@ -14,7 +14,7 @@ global interrupt_handler_%1
 interrupt_handler_%1:
     ; In these cases the CPU pushes an error code onto the stack
     ; so we need to handle it accordingly by adding this many bytes to the esp below
-    push dword $1   ; Push the interrupt number
+    push dword %1   ; Push the interrupt number
     jmp common_interrupt_handler
 %endmacro
 
@@ -28,8 +28,34 @@ common_interrupt_handler:
     push esi
     push edi
 
+    ; Push the stack pointer to the stack state
+    mov eax, esp
+    push eax
+
+    ; The stack layout after pushing the registers and ESP looks like this:
+    ; [Higher addresses]
+    ; ... (your data before interrupt)
+    ; ESP points here when your handler starts
+    ; EFLAGS          <- CPU pushed
+    ; CS              <- CPU pushed
+    ; EIP             <- CPU pushed
+    ; Error Code      <- You pushed (or CPU pushed)
+    ; Interrupt #     <- You pushed
+    ; EDI             <- You pushed (registers start here)
+    ; ESI
+    ; EBP
+    ; EDX
+    ; ECX
+    ; EBX
+    ; EAX             <- ESP points here before you push it
+    ; ESP value       <- You push this as parameter
+    ; [Lower addresses] <- New ESP after push
+
     ; Call the interrupt handler
     call interrupt_handler
+
+    ; After the handler returns, we need to restore the stack pointer
+    add esp, 4  ; Remove the stack pointer we pushed earlier
 
     ; Restore registers
     pop edi
@@ -44,6 +70,17 @@ common_interrupt_handler:
     ; In the case of the error code the CPU pushes it onto the stack before the interrupt number.
     add esp, 8  ; Remove the interrupt number and error code from the stack
 
+    ; Stack layout after cleanup:
+    ; [Higher addresses]
+    ; ... (your data before interrupt)
+    ; ESP points here after cleanup
+    ; EFLAGS          <- CPU pushed
+    ; CS              <- CPU pushed
+    ; EIP             <- CPU pushed
+    ; [Lower addresses] <- New ESP after cleanup
+
+    ; iret will pop EIP, CS, and EFLAGS from the stack
+    ; and jump to the EIP value, restoring the CPU state
     iret
 
 no_error_code_interrupt_handler 0

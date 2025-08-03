@@ -1,5 +1,6 @@
-#include "./kernel.h"
-#include "../include/types.h"
+#include "./include/panic.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 // Global canary value - GCC expects this exact symbol name
 uintptr_t __stack_chk_guard = 0;

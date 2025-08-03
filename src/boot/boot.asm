@@ -22,13 +22,25 @@ _start:
 start:
     cli                 ; Clear interrupts to prevent any interrupts during boot
     cld                 ; Clear direction flag for string operations
+    jmp 0x0000:initialise_segments
 
+initialise_segments:
 ; Setup segment registers
     xor ax, ax          ; Clear AX
     mov ds, ax          ; Set data segment to 0
     mov es, ax          ; Set extra segment to 0
     mov fs, ax          ; Set fs segment to 0
     mov gs, ax          ; Set gs segment to 0
+
+    ; Untitled OS isn't made for floppy disks, these are dead anyways.
+    ; So if the value the BIOS passed is <0x80, just assume it has passed
+    ; an incorrect value.
+    cmp dl, 0x80
+    jb not_supported
+    ; Values above 0x8f are dubious so we assume we weren't booted properly
+    ; for those either
+    cmp dl, 0x8f
+    ja not_supported
 
 ; Set up the stack
     xor ax, ax          ; Clear AX
@@ -49,6 +61,11 @@ start:
     in al, 0x92         ; Read keyboard controller status
     or al, 0x02         ; Set the A20 line enable bit
     out 0x92, al        ; Write back to the keyboard controller
+
+    mov ax, 0x0000     ; Set segment to 0
+    mov es, ax         ; Set extra segment to 0
+    mov di, 0x0504          ; Set di to 0x0504. Otherwise this code will get stuck in `int 0x15` after some entries are fetched
+    call do_e820         ; Call the memory map function
 
 ; Test for BIOS extended support
     mov ah, 0x41
@@ -75,6 +92,8 @@ start:
 ; ; Read the kernel from disk
     int 0x13           ; Call BIOS disk service
     jc disk_error      ; Jump if carry flag is set (error)
+
+
 
 ; Jump to the loaded kernel
     jmp success         ; Jump to success label
@@ -138,8 +157,8 @@ dap:
 error_msg:
     db 'Disk read error!', 0x0D, 0x0A, 0x00 ; Null-terminated string
 
-here_message:
-    db 'Bootloader loaded successfully!', 0x0D, 0x0A, 0x00 ; Null-terminated string
+not_supported:
+    db 'Not supported!', 0x0D, 0x0A, 0x00 ; Null-terminated string
 
 print_string:
     push ax            ; Save registers that will be modified
@@ -160,6 +179,8 @@ print_string:
     pop bx
     pop ax
     ret                ; Return from print_string
+
+%include "src/boot/mmap.asm" ; Include the memory map function
 
 ;; Fill the bootloader with zeros to ensure it is 512 bytes
 times 510 - ($ - $$) db 0 ; Fill the rest of the bootloader

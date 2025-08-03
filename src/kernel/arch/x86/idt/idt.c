@@ -1,6 +1,6 @@
 #include "../../../include/arch/x86/idt/idt.h"
 
-#include "../../../include/types.h"
+#include <stdint.h>
 
 #define IDT_ENTRIES 256
 

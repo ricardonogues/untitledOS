@@ -1,7 +1,7 @@
 #include "../../include/drivers/vga/vga.h"
 #include "../../include/drivers/tty/tty.h"
-#include "../../include/types.h"
-#include "../../libc/string.h"
+#include <string.h>
+#include <stdint.h>
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
@@ -61,6 +61,29 @@ void terminal_write(const char *data, size_t size)
 {
     for (size_t i = 0; i < size; i++)
         terminal_putchar(data[i]);
+}
+
+void terminal_writenumber(uint32_t num)
+{
+    if (num < 0)
+    {
+        terminal_putchar('-');
+        num = -num;
+    }
+    if (num == 0)
+    {
+        terminal_putchar('0');
+        return;
+    }
+    char buffer[11]; // Enough for 32-bit int
+    size_t i = 0;
+    while (num > 0)
+    {
+        buffer[i++] = '0' + (num % 10);
+        num /= 10;
+    }
+    while (i > 0)
+        terminal_putchar(buffer[--i]);
 }
 
 void terminal_writestring(const char *data)
