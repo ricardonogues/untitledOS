@@ -1,11 +1,62 @@
+# OS Detection
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+
+# Default compiler settings
+CC = gcc
+LD = ld
+AS = nasm
+OBJCOPY = objcopy
+QEMU = qemu-system-i386
+
+# OS-specific toolchain detection and configuration
+ifeq ($(UNAME_S),Darwin)
+    # macOS
+    ifeq ($(UNAME_M),arm64)
+        # Apple Silicon Mac - prefer cross-compilation tools if available
+        ifneq ($(shell which i386-elf-gcc 2>/dev/null),)
+            CC = i386-elf-gcc
+            LD = i386-elf-ld
+            OBJCOPY = i386-elf-objcopy
+            $(info Using cross-compilation toolchain for Apple Silicon)
+        else
+            CC = x86_64-elf-gcc
+            LD = x86_64-elf-ld
+            $(info Using x86_64-elf toolchain for Apple Silicon)
+        endif
+    else
+        # Intel Mac
+        ifneq ($(shell which i386-elf-gcc 2>/dev/null),)
+            CC = i386-elf-gcc
+            LD = i386-elf-ld
+            OBJCOPY = i386-elf-objcopy
+        endif
+    endif
+    # macOS-specific QEMU path (if installed via Homebrew)
+    ifneq ($(shell which qemu-system-i386 2>/dev/null),)
+        QEMU = qemu-system-i386
+    else ifneq ($(shell which qemu-system-x86_64 2>/dev/null),)
+        QEMU = qemu-system-x86_64
+    endif
+else ifeq ($(UNAME_S),Linux)
+    # Linux - check for cross-compilation tools
+    ifneq ($(shell which i386-elf-gcc 2>/dev/null),)
+        CC = i386-elf-gcc
+        LD = i386-elf-ld
+        OBJCOPY = i386-elf-objcopy
+    endif
+    CFLAGS += -no-pie
+else
+    # Windows or other
+    $(info Detected $(UNAME_S) - using default toolchain)
+endif
+
+
 # Compiler and linker settings
-CFLAGS = -m32 -g -ffreestanding -fno-exceptions -fno-asynchronous-unwind-tables \
+CFLAGS += -m32 -g -ffreestanding -fno-exceptions -fno-asynchronous-unwind-tables \
 		 -fno-pic -fno-omit-frame-pointer -fno-strict-aliasing \
 		 -fno-common -fno-builtin -nostdlib -Wall -Wextra -Ikernel/include -fstack-protector
 ASFLAGS = -f elf32
-CC = gcc
-AS = nasm
-LD = ld
 
 # Directories
 SRC_DIR = src
@@ -77,14 +128,14 @@ $(KERNEL_BIN): $(KERNEL_OBJECTS)
 # OS image
 $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) $(KERNEL_ELF)
 	@mkdir -p $(dir $@)
-	cat $^ > $@
+	cat $(BOOT_BIN) $(REAL_MODE_BIN) $(KERNEL_BIN) > $@
 	dd if=/dev/zero bs=1K count=1440 >> $@
 
 run: $(OS_IMAGE)
-	qemu-system-x86_64 -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M
+	$(QEMU) -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M
 
 debug: $(OS_IMAGE)
-	qemu -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M -s -S
+	$(QEMU) -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M -s -S
 
 clean:
 	rm -rf $(BUILD_DIR)

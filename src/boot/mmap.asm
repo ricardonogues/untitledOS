@@ -5,16 +5,27 @@
 ; outputs: bp = entry count, trashes all registers except esi
 
 do_e820:
-    pusha
+    push ax
+	push bx
+	push cx
+	push dx
+	push di
+	push si
+	push bp
+	push es
+	push ds
+	push fs
+	push gs
+	
 	xor ebx, ebx		; ebx must be 0 to start
 	xor bp, bp		; keep an entry count in bp
-	mov edx, 0x0534D4150	; Place "SMAP" into edx
+	mov edx, 0x534D4150	; Place "SMAP" into edx
 	mov eax, 0xe820
 	mov [es:di + 20], dword 1	; force a valid ACPI 3.X entry
 	mov ecx, 24		; ask for 24 bytes
 	int 0x15
 	jc short .failed	; carry set on first call means "unsupported function"
-	mov edx, 0x0534D4150	; Some BIOSes apparently trash this register?
+	mov edx, 0x534D4150	; Some BIOSes apparently trash this register?
 	cmp eax, edx		; on success, eax must have been reset to "SMAP"
 	jne short .failed
 	test ebx, ebx		; ebx = 0 implies list is only 1 entry long (worthless)
@@ -26,7 +37,7 @@ do_e820:
 	mov ecx, 24		; ask for 24 bytes again
 	int 0x15
 	jc short .e820f		; carry set means "end of list already reached"
-	mov edx, 0x0534D4150	; repair potentially trashed register
+	mov edx, 0x534D4150	; repair potentially trashed register
 .jmpin:
 	jcxz .skipent		; skip any 0 length entries
 	cmp cl, 20		; got a 24 byte ACPI 3.X response?
@@ -45,9 +56,31 @@ do_e820:
 .e820f:
 	mov [es:di], bp	; store the entry count
 	clc			; there is "jc" on end of list to this point, so the carry must be cleared
-    popa
+
+	pop gs
+	pop fs
+	pop ds
+	pop es
+	pop bp
+	pop si
+	pop di
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
 	ret
 .failed:
 	stc			; "function unsupported" error exit
-    popa
+	pop gs
+	pop fs
+	pop ds
+	pop es
+	pop bp
+	pop si
+	pop di
+	pop dx
+	pop cx
+	pop bx
+	pop ax
 	ret

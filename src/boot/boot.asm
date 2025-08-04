@@ -25,12 +25,13 @@ start:
     jmp 0x0000:initialise_segments
 
 initialise_segments:
-; Setup segment registers
     xor ax, ax          ; Clear AX
     mov ds, ax          ; Set data segment to 0
     mov es, ax          ; Set extra segment to 0
-    mov fs, ax          ; Set fs segment to 0
-    mov gs, ax          ; Set gs segment to 0
+    mov ss, ax          ; Set stack segment to 0
+    mov sp, 0x7C00      ; Set stack pointer to the top of the bootloader
+                        ; The stack will grow downwards from 0x7C00
+    sti
 
     ; Untitled OS isn't made for floppy disks, these are dead anyways.
     ; So if the value the BIOS passed is <0x80, just assume it has passed
@@ -41,12 +42,6 @@ initialise_segments:
     ; for those either
     cmp dl, 0x8f
     ja not_supported
-
-; Set up the stack
-    xor ax, ax          ; Clear AX
-    mov ss, ax          ; Set stack segment to 0
-    mov sp, 0x7C00      ; Set stack pointer to the top of the bootloader
-                        ; The stack will grow downwards from 0x7C00
 
 ; Setup text mode
     mov ax, 0x0003      ; Set video mode to 80x25 text mode
@@ -62,15 +57,13 @@ initialise_segments:
     or al, 0x02         ; Set the A20 line enable bit
     out 0x92, al        ; Write back to the keyboard controller
 
-    ; mov ax, 0x0000     ; Set segment to 0
-    ; mov es, ax         ; Set extra segment to 0
-    ; mov di, 0x0504          ; Set di to 0x0504. Otherwise this code will get stuck in `int 0x15` after some entries are fetched
+    ; mov di, 0x8004     ; Set di to 0x8004. Otherwise this code will get stuck in `int 0x15` after some entries are fetched
     ; call do_e820         ; Call the memory map function
 
 ; Test for BIOS extended support
     mov ah, 0x41
     mov bx, 0x55AA
-    mov dl, 0x80
+    mov dl, 0x80       ; Drive number (0x80 for first hard disk)
     int 0x13           ; Call BIOS disk service to check for extended support
     jc disk_error      ; Jump if carry flag is set (error)
     cmp bx, 0xAA55     ; Check if the signature is correct
@@ -85,8 +78,9 @@ initialise_segments:
     mov byte [si], 0x10        ; Set size of DAP structure (16 bytes)
     mov byte [si + 1], 0x00    ; Reserved byte
     mov word [si + 2], 0x0012  ; Set number of sectors to read
-    mov dword [si + 4], 0x00001000  ; Set buffer address (0x1000:0x0000)
-    mov dword [si + 8], 0x00000001  ; Set starting sector (lower part of LBA)
+    mov dword [si + 4], 0x0000  ; Set buffer address
+    mov dword [si + 6], 0x1000  ; Set buffer address (segment:offset, e.g., 0x1000:0x0000)
+    mov dword [si + 8], 0x00000002  ; Set starting sector (lower part of LBA)
     mov dword [si + 12], 0x00000000 ; Set starting sector (upper part of LBA)
 
 ; Read the kernel from disk
@@ -105,6 +99,7 @@ disk_error:
 ; Setup GDT to switch to protected mode
 success:
     lgdt [gdt_descriptor] ; Load GDT descriptor
+    cli                ; Clear interrupts
     mov eax, cr0       ; Read control register 0
     or eax, 0x1        ; Set PE (Protection Enable) bit
     mov cr0, eax       ; Write back to control register 0
@@ -115,7 +110,7 @@ BITS 32                 ; Switch to 32-bit mode
                         ; Now we are in protected mode
 protected_mode_start:
     ; Set up segment registers for protected mode
-    mov ax, 0x10       ; Data segment selector (GDT entry 1)
+    mov ax, 0x20       ; Data segment selector (GDT entry 4)
     mov ds, ax         ; Set data segment
     mov es, ax         ; Set extra segment
     mov fs, ax         ; Set fs segment
@@ -125,7 +120,7 @@ protected_mode_start:
 
 ; Jump to the kernel entry point
     ; The kernel should be loaded at 0x1000:0000
-    jmp 0x1000     ; Call the kernel entry point
+    jmp 0x10000     ; Call the kernel entry point
 loop:
     hlt                 ; Halt the system
     jmp loop            ; Infinite loop to prevent falling through
@@ -135,6 +130,8 @@ gdt:
     dq 0x0000000000000000 ; Null descriptor
     dq 0x00CF9A000000FFFF ; Code segment descriptor (base=0, limit=4GB, present, executable, readable)
     dq 0x00CF92000000FFFF ; Data segment descriptor (base=0, limit=4GB, present, writable)
+    dq 0x00cf9a000000ffff   ; 0x18: 32-bit code segment (base=0, limit=4GB)
+    dq 0x00cf92000000ffff   ; 0x20: 32-bit data segment (base=0, limit=4GB)
 gdt_descriptor:
     dw gdt_end - gdt - 1 ; Size of GDT in bytes
     dd gdt                ; Address of GDT
