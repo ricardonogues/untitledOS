@@ -62,10 +62,10 @@ initialise_segments:
     or al, 0x02         ; Set the A20 line enable bit
     out 0x92, al        ; Write back to the keyboard controller
 
-    mov ax, 0x0000     ; Set segment to 0
-    mov es, ax         ; Set extra segment to 0
-    mov di, 0x0504          ; Set di to 0x0504. Otherwise this code will get stuck in `int 0x15` after some entries are fetched
-    call do_e820         ; Call the memory map function
+    ; mov ax, 0x0000     ; Set segment to 0
+    ; mov es, ax         ; Set extra segment to 0
+    ; mov di, 0x0504          ; Set di to 0x0504. Otherwise this code will get stuck in `int 0x15` after some entries are fetched
+    ; call do_e820         ; Call the memory map function
 
 ; Test for BIOS extended support
     mov ah, 0x41
@@ -76,12 +76,12 @@ initialise_segments:
     cmp bx, 0xAA55     ; Check if the signature is correct
     jne disk_error     ; If not, jump to disk error handling
 
-; ; Load the kernel from disk (int 13h ah=0x42)
+; Load the kernel from disk (int 13h ah=0x42)
     mov ah, 0x42       ; Function to read sectors
     mov dl, 0x80       ; Drive number (0x80 for first hard disk)
     mov si, dap        ; Load address of DAP
 
-; ; Setup DAP for reading the kernel
+; Setup DAP for reading the kernel
     mov byte [si], 0x10        ; Set size of DAP structure (16 bytes)
     mov byte [si + 1], 0x00    ; Reserved byte
     mov word [si + 2], 0x0012  ; Set number of sectors to read
@@ -89,11 +89,9 @@ initialise_segments:
     mov dword [si + 8], 0x00000001  ; Set starting sector (lower part of LBA)
     mov dword [si + 12], 0x00000000 ; Set starting sector (upper part of LBA)
 
-; ; Read the kernel from disk
+; Read the kernel from disk
     int 0x13           ; Call BIOS disk service
     jc disk_error      ; Jump if carry flag is set (error)
-
-
 
 ; Jump to the loaded kernel
     jmp success         ; Jump to success label
@@ -112,7 +110,7 @@ success:
     mov cr0, eax       ; Write back to control register 0
 
     jmp 0x08:protected_mode_start ; Jump to protected mode code
-    
+
 BITS 32                 ; Switch to 32-bit mode
                         ; Now we are in protected mode
 protected_mode_start:

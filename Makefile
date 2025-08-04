@@ -3,9 +3,9 @@ CFLAGS = -m32 -g -ffreestanding -fno-exceptions -fno-asynchronous-unwind-tables 
 		 -fno-pic -fno-omit-frame-pointer -fno-strict-aliasing \
 		 -fno-common -fno-builtin -nostdlib -Wall -Wextra -Ikernel/include -fstack-protector
 ASFLAGS = -f elf32
-CC = x86_64-elf-gcc
+CC = gcc
 AS = nasm
-LD = x86_64-elf-ld
+LD = ld
 
 # Directories
 SRC_DIR = src
@@ -81,10 +81,10 @@ $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) $(KERNEL_ELF)
 	dd if=/dev/zero bs=1K count=1440 >> $@
 
 run: $(OS_IMAGE)
-	qemu-system-i386 -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M
+	qemu-system-x86_64 -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M
 
 debug: $(OS_IMAGE)
-	qemu-system-i386 -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M -s -S
+	qemu -machine pc -drive file=$<,format=raw -serial stdio -smp 1 -m 512M -s -S
 
 clean:
 	rm -rf $(BUILD_DIR)
