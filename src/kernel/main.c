@@ -3,6 +3,7 @@
 #include "include/stack_protector.h"
 #include "include/arch/x86/gdt/gdt.h"
 #include "include/arch/x86/interrupts.h"
+#include "include/mm/memory_map.h"
 // #include "tests/idt_test.h"
 // #include "tests/stack_test.h"
 
@@ -17,6 +18,9 @@ void kernel_main(void)
     stack_protector_init();
     terminal_writestring("Stack protector initialized.\n");
 
+    init_memory_map();
+    terminal_writestring("Memory map initialized.\n");
+    print_memory_map();
     // Run stack protection test
     // test_stack_protection();
 
